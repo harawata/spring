@@ -29,6 +29,7 @@ import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.cache.Cache;
 import org.apache.ibatis.executor.ErrorContext;
+import org.apache.ibatis.io.FileResource;
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.io.VFS;
 import org.apache.ibatis.mapping.DatabaseIdProvider;
@@ -472,7 +473,11 @@ public class SqlSessionFactoryBean
         targetConfiguration.getVariables().putAll(this.configurationProperties);
       }
     } else if (this.configLocation != null) {
-      xmlConfigBuilder = new XMLConfigBuilder(this.configLocation.getInputStream(), null, this.configurationProperties);
+      if (configLocation.isFile()) {
+        xmlConfigBuilder = new XMLConfigBuilder(new FileResource(configLocation.getFile()), null, this.configurationProperties);
+      } else {
+        xmlConfigBuilder = new XMLConfigBuilder(this.configLocation.getInputStream(), null, this.configurationProperties);
+      }
       targetConfiguration = xmlConfigBuilder.getConfiguration();
     } else {
       LOGGER.debug(
@@ -553,8 +558,14 @@ public class SqlSessionFactoryBean
             continue;
           }
           try {
-            XMLMapperBuilder xmlMapperBuilder = new XMLMapperBuilder(mapperLocation.getInputStream(),
-                targetConfiguration, mapperLocation.toString(), targetConfiguration.getSqlFragments());
+            XMLMapperBuilder xmlMapperBuilder;
+            if (mapperLocation.isFile()) {
+              xmlMapperBuilder = new XMLMapperBuilder(new FileResource(mapperLocation.getFile()), targetConfiguration,
+                  targetConfiguration.getSqlFragments());
+            } else {
+              xmlMapperBuilder = new XMLMapperBuilder(mapperLocation.getInputStream(),
+                  targetConfiguration, mapperLocation.toString(), targetConfiguration.getSqlFragments());
+            }
             xmlMapperBuilder.parse();
           } catch (Exception e) {
             throw new NestedIOException("Failed to parse mapping resource: '" + mapperLocation + "'", e);
